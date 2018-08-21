@@ -26,17 +26,15 @@ install: # install and configure relevant packages
 	ASSUME_ALWAYS_YES=yes pkg -j $(J_NAME) install git p5-HTTP-Daemon-SSL
 
 # configure git
-	service sshd rcvar >> $(J_PATH)etc/rc.conf
-	jexec $(J_NAME) pw useradd admin -s /usr/local/bin/git-shell -m
-	mkdir -p $(J_PATH)git/certs $(J_PATH)git/webroot
-	jexec $(J_NAME) chown admin /git/webroot
+	jexec $(J_NAME) pw useradd admin -s /usr/local/bin/git-shell -m -u 1001
+	install -u 1001 -d $(J_PATH)git/certs $(J_PATH)git/webroot $(J_PATH)usr/home/admin/.ssh
 	jexec -U admin $(J_NAME) git init --bare /usr/home/admin/admin
-	echo 'git --work-tree=/git/webroot/ --git-dir=/usr/home/admin/admin/ checkout -f' >> $(J_PATH)/usr/home/admin/admin/hooks/post-receive
+	service sshd rcvar >> $(J_PATH)etc/rc.conf
+	echo 'git --work-tree=/git/webroot/ --git-dir=/usr/home/admin/admin/ checkout -f' >> $(J_PATH)usr/home/admin/admin/hooks/post-receive
 	chmod a+x $(J_PATH)/usr/home/admin/admin/hooks/post-receive
 
 # generate an SSH key set
 	ssh-keygen -t rsa -f git.sshkey -q -N ''
-	mkdir $(J_PATH)usr/home/admin/.ssh
 	cp git.sshkey.pub $(J_PATH)usr/home/admin/.ssh/authorized_keys
 
 #  generate self-signed ssl cert...openssl really has a messy convention here.
@@ -51,8 +49,7 @@ install: # install and configure relevant packages
 
 clean: # get rid of the jail, the keys, and the local repository checkout
 	ezjail-admin delete -fw $(J_NAME)
-	rm git.sshkey git.sshkey.pub
-	rm -rf admin
+	rm -rf admin git.sshkey git.sshkey.pub
 
 test: # initialize a repository and visually validate that the web request works.
 	git init admin
