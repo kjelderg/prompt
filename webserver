@@ -1,17 +1,13 @@
 #!/usr/local/bin/perl
 use HTTP::Daemon::SSL;
 
-my $d = HTTP::Daemon::SSL->new(
+$d = new HTTP::Daemon::SSL
 	SSL_cert_file => '/git/certs/server-cert.pem',
 	SSL_key_file => '/git/certs/server-key.pem',
-	LocalPort => 443) or die;
-while(my $c = $d->accept) {
-	while($c->get_request) {
-		my $o, $r = HTTP::Response->new(200, 'OK');
-		$r->header('Content-Type' => 'text/plain');
-		$o .= `$_` foreach(glob '/git/webroot/*');
-		$r->content($o);
-		$c->send_response($r);
-	}
+	LocalPort => 443 or die;
+while($r = ($c=$d->accept)->get_request) {
+	my $o;
+	$o .= `$_` foreach glob '/git/webroot/*';
+	$c->send_response(new HTTP::Response 200, 'OK', HTTP::Headers->new('Content-Type' => 'text/plain'), $o);
 	$c->close;
 }
